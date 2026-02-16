@@ -1,6 +1,23 @@
-# 見積もり作成システム
+# 見積もり作成システム（サンプル）
 
-Next.js 16 + MUI + Prisma で構築された見積書作成・管理システムです。
+Next.js 16 + MUI + Prisma で構築された見積書作成・管理システムの**サンプルプロジェクト**です。
+
+## 本プロジェクトについて
+
+このプロジェクトは、以下の技術要素の動作確認・学習を目的としたサンプル実装です：
+
+- **Next.js App Router** - SSG（Static Site Generation）によるページ生成
+- **Route Handlers** - API エンドポイントの実装パターン
+- **MUI v7** - Material UI を用いた UI コンポーネント設計
+- **認証フロー** - JWT + Cookie によるセッション管理
+
+### アーキテクチャ方針
+
+- **ページは全て SSG（静的生成）** - `/api/*` 以外の動的ルート（`[id]`）は使用しない
+- **データ取得はクライアントサイド** - SWR を使用して API からデータを取得
+- **ID の受け渡しはクエリパラメータ** - `/documents/edit?id=xxx` 形式を採用
+
+> **Note**: データベースには **SQLite + Prisma** を採用しています。これはローカル開発・動作確認を容易にするための選択のため、本番環境は想定されていません。
 
 ## 機能一覧
 
@@ -13,14 +30,14 @@ Next.js 16 + MUI + Prisma で構築された見積書作成・管理システム
 
 ## 技術スタック
 
-| カテゴリ | 技術 |
-|---------|------|
-| フレームワーク | Next.js 16 (App Router) |
-| UI | MUI v7 (Material UI) |
-| ORM | Prisma 7 |
-| データベース | SQLite |
-| 認証 | JWT (jose) + bcryptjs |
-| データ取得 | SWR |
+| カテゴリ | 技術 | 備考 |
+|---------|------|------|
+| フレームワーク | Next.js 16 (App Router) | SSG のみ（ページ） + Route Handlers（API） |
+| UI | MUI v7 (Material UI) | |
+| ORM | Prisma 7 | |
+| データベース | SQLite | ※テスト用。本番は PostgreSQL/MySQL 推奨 |
+| 認証 | JWT (jose) + bcryptjs | HttpOnly Cookie |
+| データ取得 | SWR | クライアントサイドフェッチ |
 
 ## データモデル
 
@@ -98,29 +115,29 @@ erDiagram
 ```mermaid
 flowchart TB
     subgraph 認証
-        Login[ログイン画面]
+        Login["/login<br>ログイン画面"]
     end
 
     subgraph ダッシュボード
-        Dashboard[ダッシュボード]
+        Dashboard["/<br>ダッシュボード"]
     end
 
     subgraph 顧客管理
-        CompanyList[顧客一覧]
-        CompanyNew[顧客登録]
-        CompanyEdit[顧客編集]
+        CompanyList["/companies<br>顧客一覧"]
+        CompanyNew["/companies/new<br>顧客登録"]
+        CompanyEdit["/companies/edit?id=xxx<br>顧客編集"]
     end
 
     subgraph 見積もり管理
-        DocumentList[見積もり一覧]
-        DocumentNew[見積もり作成]
-        DocumentDetail[見積もり詳細]
-        DocumentEdit[見積もり編集]
+        DocumentList["/documents<br>見積もり一覧"]
+        DocumentNew["/documents/new<br>見積もり作成"]
+        DocumentDetail["/documents/detail?id=xxx<br>見積もり詳細"]
+        DocumentEdit["/documents/edit?id=xxx<br>見積もり編集"]
     end
 
     subgraph 設定
-        Settings[設定メニュー]
-        OfficeSettings[自社情報]
+        Settings["/settings<br>設定メニュー"]
+        OfficeSettings["/settings/office<br>自社情報"]
     end
 
     Login --> Dashboard
@@ -202,117 +219,247 @@ http://localhost:3000 にアクセス
 
 ```
 .
-├── app/                              # Next.js App Router
-│   ├── (auth)/                       # 認証グループ（未認証ユーザー向け）
-│   │   ├── layout.tsx                # 認証レイアウト
-│   │   └── login/
-│   │       └── page.tsx              # ログイン画面
-│   │
-│   ├── (dashboard)/                  # ダッシュボードグループ（認証必須）
-│   │   ├── layout.tsx                # Sidebar + Header レイアウト
-│   │   ├── page.tsx                  # ダッシュボード（統計表示）
+├── src/
+│   ├── app/                              # Next.js App Router（ルーティング）
+│   │   ├── (auth)/                       # 認証グループ（未認証ユーザー向け）
+│   │   │   ├── layout.tsx
+│   │   │   └── login/page.tsx
 │   │   │
-│   │   ├── companies/                # 顧客管理
-│   │   │   ├── page.tsx              # 顧客一覧
-│   │   │   ├── new/page.tsx          # 顧客登録
-│   │   │   └── [id]/edit/page.tsx    # 顧客編集
+│   │   ├── (dashboard)/                  # ダッシュボードグループ（認証必須）
+│   │   │   ├── layout.tsx                # Sidebar + Header レイアウト
+│   │   │   ├── page.tsx                  # ダッシュボード
+│   │   │   ├── companies/                # 顧客管理
+│   │   │   │   ├── page.tsx              # 一覧
+│   │   │   │   ├── new/page.tsx          # 新規作成
+│   │   │   │   └── edit/page.tsx         # 編集 (?id=xxx)
+│   │   │   ├── documents/                # 見積もり管理
+│   │   │   │   ├── page.tsx              # 一覧
+│   │   │   │   ├── new/page.tsx          # 新規作成
+│   │   │   │   ├── detail/page.tsx       # 詳細 (?id=xxx)
+│   │   │   │   └── edit/page.tsx         # 編集 (?id=xxx)
+│   │   │   └── settings/                 # 設定
+│   │   │       ├── page.tsx
+│   │   │       └── office/page.tsx
 │   │   │
-│   │   ├── documents/                # 見積もり管理
-│   │   │   ├── page.tsx              # 見積もり一覧
-│   │   │   ├── new/page.tsx          # 見積もり作成
-│   │   │   └── [id]/
-│   │   │       ├── page.tsx          # 見積もり詳細
-│   │   │       └── edit/page.tsx     # 見積もり編集
+│   │   ├── api/                          # === バックエンド（API Routes） ===
+│   │   │   ├── auth/
+│   │   │   │   ├── login/route.ts        # POST: ログイン
+│   │   │   │   ├── logout/route.ts       # POST: ログアウト
+│   │   │   │   └── me/route.ts           # GET: 現在のユーザー
+│   │   │   ├── companies/
+│   │   │   │   ├── route.ts              # GET/POST
+│   │   │   │   └── [id]/route.ts         # GET/PUT/DELETE
+│   │   │   ├── documents/
+│   │   │   │   ├── route.ts              # GET/POST
+│   │   │   │   ├── [id]/route.ts         # GET/PUT/DELETE
+│   │   │   │   └── generate-number/route.ts
+│   │   │   └── offices/[id]/route.ts     # GET/PUT
 │   │   │
-│   │   └── settings/                 # 設定
-│   │       ├── page.tsx              # 設定メニュー
-│   │       └── office/page.tsx       # 自社情報編集
+│   │   ├── layout.tsx                    # ルートレイアウト
+│   │   ├── providers.tsx                 # MUI ThemeProvider
+│   │   └── globals.css
 │   │
-│   ├── api/                          # API Routes (Route Handlers)
-│   │   ├── auth/
-│   │   │   ├── login/route.ts        # POST: ログイン認証
-│   │   │   ├── logout/route.ts       # POST: ログアウト
-│   │   │   └── me/route.ts           # GET: 現在のユーザー情報
-│   │   │
-│   │   ├── companies/
-│   │   │   ├── route.ts              # GET: 一覧, POST: 作成
-│   │   │   └── [id]/route.ts         # GET/PUT/DELETE: 個別操作
-│   │   │
-│   │   ├── documents/
-│   │   │   ├── route.ts              # GET: 一覧, POST: 作成
-│   │   │   ├── [id]/route.ts         # GET/PUT/DELETE: 個別操作
-│   │   │   └── generate-number/route.ts  # GET: 見積番号自動生成
-│   │   │
-│   │   └── offices/
-│   │       └── [id]/route.ts         # GET/PUT: 自社情報
+│   ├── components/                       # === フロントエンド（UIコンポーネント） ===
+│   │   ├── ui/                           # 汎用UI
+│   │   │   ├── ConfirmDialog.tsx         # 削除確認ダイアログ
+│   │   │   └── LoadingSpinner.tsx        # ローディング表示
+│   │   ├── layout/                       # レイアウト
+│   │   │   ├── Header.tsx
+│   │   │   └── Sidebar.tsx
+│   │   └── features/                     # 機能別コンポーネント
+│   │       ├── auth/
+│   │       │   └── LoginForm.tsx
+│   │       ├── companies/
+│   │       │   └── CompanyForm.tsx
+│   │       └── documents/
+│   │           ├── DocumentForm.tsx
+│   │           └── QuoteItemTable.tsx
 │   │
-│   ├── layout.tsx                    # ルートレイアウト（Providers適用）
-│   ├── providers.tsx                 # MUI ThemeProvider, CssBaseline
-│   └── globals.css                   # グローバルCSS
-│
-├── components/                       # Reactコンポーネント
-│   ├── auth/
-│   │   └── LoginForm.tsx             # ログインフォーム
+│   ├── hooks/                            # === フロントエンド（カスタムフック） ===
+│   │   ├── useAuth.ts                    # 認証状態管理
+│   │   ├── useCompanies.ts               # 顧客データ取得
+│   │   └── useDocuments.ts               # 見積もりデータ取得
 │   │
-│   ├── common/
-│   │   ├── ConfirmDialog.tsx         # 削除確認ダイアログ
-│   │   └── LoadingSpinner.tsx        # ローディング表示
+│   ├── lib/                              # === バックエンド（サーバーサイド） ===
+│   │   ├── db/
+│   │   │   └── prisma.ts                 # Prismaクライアント
+│   │   └── auth/
+│   │       └── auth.ts                   # JWT、パスワードハッシュ、セッション
 │   │
-│   ├── companies/
-│   │   └── CompanyForm.tsx           # 顧客登録/編集フォーム
+│   ├── types/                            # === 共通（型定義） ===
+│   │   ├── index.ts                      # エクスポート
+│   │   ├── api.ts                        # APIレスポンス型
+│   │   ├── company.ts                    # 顧客型
+│   │   ├── document.ts                   # 見積もり型
+│   │   └── user.ts                       # ユーザー・自社情報型
 │   │
-│   ├── documents/
-│   │   ├── DocumentForm.tsx          # 見積もり作成/編集フォーム
-│   │   └── QuoteItemTable.tsx        # 明細行テーブル（追加/削除/編集）
+│   ├── config/                           # 設定
+│   │   └── theme.ts                      # MUIテーマ
 │   │
-│   └── layout/
-│       ├── Header.tsx                # ヘッダー（タイトル、ユーザーメニュー）
-│       └── Sidebar.tsx               # サイドバー（ナビゲーション）
-│
-├── hooks/                            # カスタムフック（SWRベース）
-│   ├── useAuth.ts                    # 認証状態管理、ログイン/ログアウト
-│   ├── useCompanies.ts               # 顧客データ取得、CRUD操作
-│   └── useDocuments.ts               # 見積もりデータ取得、CRUD操作
-│
-├── lib/                              # ユーティリティ関数
-│   ├── auth.ts                       # JWT検証、パスワードハッシュ、セッション管理
-│   └── prisma.ts                     # Prismaクライアント（シングルトン）
+│   └── services/                         # ビジネスロジック（拡張用）
 │
 ├── prisma/
-│   ├── schema.prisma                 # データベーススキーマ定義
-│   ├── seed.ts                       # 初期データ投入スクリプト
-│   └── dev.db                        # SQLiteデータベースファイル
+│   ├── schema.prisma                     # DBスキーマ定義
+│   ├── seed.ts                           # 初期データ
+│   └── dev.db                            # SQLiteファイル
 │
-├── theme.ts                          # MUIテーマ設定
-├── middleware.ts                     # 認証ミドルウェア（保護ルート）
-├── prisma.config.ts                  # Prisma設定（SQLite接続）
+├── scripts/                              # スクリプト
+│   ├── setup.sh                          # 初期セットアップ (Mac/Linux)
+│   ├── setup.bat                         # 初期セットアップ (Windows)
+│   └── deploy.ps1                        # IISデプロイ (PowerShell)
+│
+├── middleware.ts                         # 認証ミドルウェア
+├── prisma.config.ts                      # Prisma設定
+├── server.js                             # IIS用エントリーポイント
+├── web.config                            # IIS設定
 └── package.json
+```
+
+### SSG + クエリパラメータ パターン
+
+このプロジェクトでは、ページルートに動的セグメント（`[id]`）を使用せず、全てのページを静的生成（SSG）としています。
+
+```
+❌ /documents/[id]           → 動的ルート（SSR/ISR が必要）
+✅ /documents/detail?id=xxx  → 静的ページ + クエリパラメータ（SSG）
+```
+
+**実装パターン:**
+
+```tsx
+"use client";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
+function DetailContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+  // SWR で API からデータ取得
+  const { data } = useDocument(id);
+  // ...
+}
+
+export default function DetailPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <DetailContent />
+    </Suspense>
+  );
+}
+```
+
+> **Note**: `useSearchParams()` を使用するコンポーネントは `Suspense` でラップする必要があります。
+
+### アーキテクチャ概要
+
+**コードベース構成:**
+
+```mermaid
+flowchart LR
+    subgraph shared["共通"]
+        Types["types/"]
+    end
+
+    subgraph client["クライアント資産"]
+        Pages["app/(auth), (dashboard)/<br>ページコンポーネント"]
+        Components["components/"]
+        Hooks["hooks/"]
+    end
+
+    subgraph server["サーバー資産"]
+        API["app/api/<br>Route Handlers"]
+        Lib["lib/<br>Auth, Prisma"]
+    end
+
+    subgraph data["データ層"]
+        Schema["prisma/schema"]
+        DB[(SQLite)]
+    end
+
+    Types -.->|import| client
+    Types -.->|import| server
+    Hooks -->|使用| Pages
+    Components -->|使用| Pages
+    API --> Lib --> Schema --> DB
+```
+
+**ランタイムフロー:**
+
+```mermaid
+flowchart LR
+    subgraph browser["ブラウザ"]
+        SSG["SSG ページ<br>(静的HTML/JS)"]
+        SWR["SWR<br>(データ取得)"]
+        SSG --> SWR
+    end
+
+    subgraph server["Next.js サーバー"]
+        API["Route Handlers<br>/api/*"]
+        Prisma["Prisma Client"]
+        API --> Prisma
+    end
+
+    DB[(SQLite)]
+
+    SWR <-->|HTTP| API
+    Prisma <--> DB
+```
+
+**データ取得シーケンス:**
+
+```mermaid
+sequenceDiagram
+    participant B as ブラウザ
+    participant S as Next.js サーバー
+    participant DB as SQLite
+
+    B->>S: GET /documents/detail?id=xxx<br>(SSG ページ取得)
+    S-->>B: 静的 HTML/JS
+
+    Note over B: React マウント<br>useSearchParams() で id 取得
+
+    B->>S: GET /api/documents/xxx<br>(SWR による API コール)
+    S->>DB: SELECT * FROM Document...
+    DB-->>S: データ
+    S-->>B: JSON レスポンス
+
+    Note over B: UI 更新
 ```
 
 ## 主要ファイルの説明
 
-### 認証関連
+### バックエンド（サーバーサイド）
 
 | ファイル | 説明 |
 |----------|------|
-| `lib/auth.ts` | JWT生成・検証、パスワードハッシュ（bcrypt）、Cookieセッション管理 |
+| `src/lib/auth/auth.ts` | JWT生成・検証、パスワードハッシュ（bcrypt）、セッション管理 |
+| `src/lib/db/prisma.ts` | Prismaクライアント（シングルトン） |
 | `middleware.ts` | `/companies`, `/documents`, `/settings` へのアクセスを認証チェック |
-| `hooks/useAuth.ts` | ログイン状態の取得、ログイン/ログアウト処理をSWRで管理 |
 
-### データ取得
+### フロントエンド（クライアントサイド）
 
 | ファイル | 説明 |
 |----------|------|
-| `hooks/useCompanies.ts` | 顧客一覧取得、検索、ページネーション、CRUD関数をエクスポート |
-| `hooks/useDocuments.ts` | 見積もり一覧取得、見積番号生成、CRUD関数をエクスポート |
+| `src/hooks/useAuth.ts` | ログイン状態の取得、ログイン/ログアウト処理をSWRで管理 |
+| `src/hooks/useCompanies.ts` | 顧客一覧取得、検索、ページネーション、CRUD関数 |
+| `src/hooks/useDocuments.ts` | 見積もり一覧取得、見積番号生成、CRUD関数 |
 
 ### UI コンポーネント
 
 | ファイル | 説明 |
 |----------|------|
-| `components/layout/Sidebar.tsx` | ナビゲーションメニュー（顧客管理、見積もり、設定） |
-| `components/layout/Header.tsx` | ページタイトル表示、ユーザー名、ログアウトボタン |
-| `components/documents/QuoteItemTable.tsx` | 見積もり明細の行追加・削除・金額自動計算 |
+| `src/components/layout/Sidebar.tsx` | ナビゲーションメニュー |
+| `src/components/layout/Header.tsx` | ページタイトル、ユーザーメニュー |
+| `src/components/features/documents/QuoteItemTable.tsx` | 見積もり明細の行追加・削除・金額自動計算 |
+
+### 型定義（共通）
+
+| ファイル | 説明 |
+|----------|------|
+| `src/types/api.ts` | APIレスポンス、エラー型 |
+| `src/types/company.ts` | 顧客企業の型 |
+| `src/types/document.ts` | 見積もり、明細行の型 |
+| `src/types/user.ts` | ユーザー、自社情報の型 |
 
 ### API エンドポイント
 
@@ -356,7 +503,7 @@ http://localhost:3000 にアクセス
 npm run build
 
 # 2. デプロイスクリプト実行
-.\deploy.ps1 -TargetPath "C:\inetpub\wwwroot\quote-system"
+.\scripts\deploy.ps1 -TargetPath "C:\inetpub\wwwroot\quote-system"
 
 # 3. IIS マネージャーで設定
 #    - アプリケーションプール: マネージコードなし
@@ -367,9 +514,17 @@ npm run build
 
 | ファイル | 説明 |
 |----------|------|
-| `server.js` | Node.js エントリーポイント |
+| `server.js` | Node.js エントリーポイント（IIS用） |
 | `web.config` | IIS + iisnode 設定 |
-| `deploy.ps1` | デプロイ自動化スクリプト |
+| `scripts/deploy.ps1` | デプロイ自動化スクリプト |
+
+## スクリプト
+
+| スクリプト | 説明 |
+|------------|------|
+| `scripts/setup.sh` | Mac/Linux 初期セットアップ |
+| `scripts/setup.bat` | Windows 初期セットアップ |
+| `scripts/deploy.ps1` | IIS デプロイ |
 
 ## ライセンス
 
