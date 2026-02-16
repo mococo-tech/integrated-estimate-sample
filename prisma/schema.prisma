@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// 自社情報
+model Office {
+  id        String   @id @default(cuid())
+  name      String
+  zipCode   String?
+  address   String?
+  phone     String?
+  fax       String?
+  email     String?
+  logoUrl   String?
+  bankInfo  String?
+  invoiceNo String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  persons   Person[]
+  documents Document[]
+}
+
+// 自社担当者（ログインユーザー）
+model Person {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("user")
+  phone     String?
+  position  String?
+  isActive  Boolean  @default(true)
+  officeId  String
+  office    Office   @relation(fields: [officeId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+}
+
+// 顧客企業
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  zipCode     String?
+  address     String?
+  phone       String?
+  fax         String?
+  email       String?
+  contactName String?
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents Document[]
+}
+
+// 見積書
+model Document {
+  id            String    @id @default(cuid())
+  documentNo    String    @unique
+  title         String
+  issueDate     DateTime
+  validUntil    DateTime?
+  status        String    @default("draft")
+  subtotal      Int       @default(0)
+  taxRate       Int       @default(10)
+  taxAmount     Int       @default(0)
+  totalAmount   Int       @default(0)
+  note          String?
+  paymentTerms  String?
+  deliveryDate  String?
+  deliveryPlace String?
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  personId String
+  person   Person @relation(fields: [personId], references: [id])
+
+  officeId String
+  office   Office @relation(fields: [officeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items QuoteItem[]
+}
+
+// 見積もり明細行
+model QuoteItem {
+  id          String  @id @default(cuid())
+  sortOrder   Int
+  itemName    String
+  description String?
+  quantity    Int
+  unit        String?
+  unitPrice   Int
+  amount      Int
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([documentId])
+}

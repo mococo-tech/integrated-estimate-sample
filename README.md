@@ -339,6 +339,38 @@ http://localhost:3000 にアクセス
 | `npm run db:seed` | 初期データ投入 |
 | `npm run db:studio` | Prisma Studio起動 |
 
+## IIS デプロイ
+
+### 必要条件
+
+- Windows Server 2016以降
+- IIS 10.0以降
+- Node.js (LTS)
+- [iisnode](https://github.com/Azure/iisnode/releases)
+- [URL Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)
+
+### デプロイ手順
+
+```powershell
+# 1. ビルド
+npm run build
+
+# 2. デプロイスクリプト実行
+.\deploy.ps1 -TargetPath "C:\inetpub\wwwroot\quote-system"
+
+# 3. IIS マネージャーで設定
+#    - アプリケーションプール: マネージコードなし
+#    - 物理パス: C:\inetpub\wwwroot\quote-system
+```
+
+### 構成ファイル
+
+| ファイル | 説明 |
+|----------|------|
+| `server.js` | Node.js エントリーポイント |
+| `web.config` | IIS + iisnode 設定 |
+| `deploy.ps1` | デプロイ自動化スクリプト |
+
 ## ライセンス
 
 MIT
