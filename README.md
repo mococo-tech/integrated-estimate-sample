@@ -146,10 +146,13 @@ http://localhost:3000 にアクセス
 │   ├── config/                           # 設定
 │   │   └── theme.ts                      # MUIテーマ
 │   │
-│   └── services/                         # ビジネスロジック（拡張用）
+│   ├── services/                         # ビジネスロジック（拡張用）
+│   │
+│   └── middleware.ts                     # 認証ミドルウェア
 │
 ├── prisma/
 │   ├── schema.prisma                     # DBスキーマ定義
+│   ├── prisma.config.ts                  # Prisma設定
 │   ├── seed.ts                           # 初期データ
 │   └── dev.db                            # SQLiteファイル
 │
@@ -158,8 +161,6 @@ http://localhost:3000 にアクセス
 │   ├── setup.bat                         # 初期セットアップ (Windows)
 │   └── deploy.ps1                        # IISデプロイ (PowerShell)
 │
-├── middleware.ts                         # 認証ミドルウェア
-├── prisma.config.ts                      # Prisma設定
 ├── server.js                             # IIS用エントリーポイント
 ├── web.config                            # IIS設定
 └── package.json
@@ -284,7 +285,7 @@ sequenceDiagram
 |----------|------|
 | `src/lib/auth/auth.ts` | JWT生成・検証、パスワードハッシュ（bcrypt）、セッション管理 |
 | `src/lib/db/prisma.ts` | Prismaクライアント（シングルトン） |
-| `middleware.ts` | `/companies`, `/documents`, `/settings` へのアクセスを認証チェック |
+| `src/middleware.ts` | `/companies`, `/documents`, `/settings` へのアクセスを認証チェック |
 
 ### フロントエンド（クライアントサイド）
 
