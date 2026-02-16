@@ -74,12 +74,39 @@ if (-not (Test-Path $LogDir)) {
 $existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($existingService) {
     Write-Host "既存のサービスを削除中..." -ForegroundColor Yellow
-    if ($existingService.Status -eq "Running") {
+    if ($existingService.Status -ne "Stopped") {
         & $NssmExe stop $ServiceName
-        Start-Sleep -Seconds 2
+        Start-Sleep -Seconds 3
     }
     & $NssmExe remove $ServiceName confirm
-    Start-Sleep -Seconds 1
+
+    # サービスが完全に削除されるまで待機
+    $maxWait = 30
+    $waited = 0
+    while ($waited -lt $maxWait) {
+        Start-Sleep -Seconds 2
+        $waited += 2
+        $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        if (-not $svc) {
+            Write-Host "  サービスの削除を確認しました"
+            break
+        }
+        Write-Host "  サービスの削除待ち... ($waited 秒)" -ForegroundColor Gray
+    }
+
+    # まだ残っている場合はエラー
+    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($svc) {
+        Write-Host ""
+        Write-Host "ERROR: サービスの削除が完了しませんでした" -ForegroundColor Red
+        Write-Host "以下を確認してください:" -ForegroundColor Yellow
+        Write-Host "  1. Services.msc（サービス管理画面）を閉じる"
+        Write-Host "  2. タスクマネージャーで関連プロセスが残っていないか確認"
+        Write-Host "  3. 再度スクリプトを実行"
+        Write-Host ""
+        Write-Host "それでも解決しない場合は、PC を再起動してから再実行してください"
+        exit 1
+    }
 }
 
 # サービスインストール
