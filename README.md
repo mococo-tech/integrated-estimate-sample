@@ -19,15 +19,6 @@ Next.js 16 + MUI + Prisma で構築された見積書作成・管理システム
 
 > **Note**: データベースには **SQLite + Prisma** を採用しています。これはローカル開発・動作確認を容易にするための選択のため、本番環境は想定されていません。
 
-## 機能一覧
-
-- **認証機能**: ユーザー名/パスワードによるログイン
-- **ダッシュボード**: 顧客数・見積もり数の統計表示
-- **顧客管理**: 顧客企業のCRUD操作
-- **見積もり管理**: 見積書の作成・編集・一覧表示
-- **自社情報設定**: 会社名・住所・振込先情報の管理
-- **印刷対応**: 見積書の印刷用スタイル
-
 ## 技術スタック
 
 | カテゴリ | 技術 | 備考 |
@@ -38,147 +29,6 @@ Next.js 16 + MUI + Prisma で構築された見積書作成・管理システム
 | データベース | SQLite | ※テスト用。本番は PostgreSQL/MySQL 推奨 |
 | 認証 | JWT (jose) + bcryptjs | HttpOnly Cookie |
 | データ取得 | SWR | クライアントサイドフェッチ |
-
-## データモデル
-
-```mermaid
-erDiagram
-    Office ||--o{ Person : "所属"
-    Office ||--o{ Document : "発行"
-    Person ||--o{ Document : "担当"
-    Company ||--o{ Document : "宛先"
-    Document ||--o{ QuoteItem : "明細"
-
-    Office {
-        string id PK
-        string name "会社名"
-        string zipCode "郵便番号"
-        string address "住所"
-        string phone "電話番号"
-        string fax "FAX"
-        string email "メール"
-        string bankInfo "振込先情報"
-        string invoiceNo "インボイス番号"
-    }
-
-    Person {
-        string id PK
-        string name "氏名"
-        string email "メール"
-        string password "パスワード"
-        string role "権限"
-        string officeId FK
-    }
-
-    Company {
-        string id PK
-        string name "会社名"
-        string zipCode "郵便番号"
-        string address "住所"
-        string phone "電話番号"
-        string email "メール"
-        string contactName "担当者名"
-        string note "備考"
-    }
-
-    Document {
-        string id PK
-        string documentNo "見積番号"
-        string title "件名"
-        datetime issueDate "発行日"
-        datetime validUntil "有効期限"
-        string status "状態"
-        decimal subtotal "小計"
-        int taxRate "税率"
-        decimal taxAmount "消費税"
-        decimal totalAmount "合計金額"
-        string companyId FK
-        string personId FK
-        string officeId FK
-    }
-
-    QuoteItem {
-        string id PK
-        int sortOrder "表示順"
-        string itemName "品名"
-        string description "説明"
-        int quantity "数量"
-        string unit "単位"
-        decimal unitPrice "単価"
-        decimal amount "金額"
-        string documentId FK
-    }
-```
-
-## 画面構成
-
-```mermaid
-flowchart TB
-    subgraph 認証
-        Login["/login<br>ログイン画面"]
-    end
-
-    subgraph ダッシュボード
-        Dashboard["/<br>ダッシュボード"]
-    end
-
-    subgraph 顧客管理
-        CompanyList["/companies<br>顧客一覧"]
-        CompanyNew["/companies/new<br>顧客登録"]
-        CompanyEdit["/companies/edit?id=xxx<br>顧客編集"]
-    end
-
-    subgraph 見積もり管理
-        DocumentList["/documents<br>見積もり一覧"]
-        DocumentNew["/documents/new<br>見積もり作成"]
-        DocumentDetail["/documents/detail?id=xxx<br>見積もり詳細"]
-        DocumentEdit["/documents/edit?id=xxx<br>見積もり編集"]
-    end
-
-    subgraph 設定
-        Settings["/settings<br>設定メニュー"]
-        OfficeSettings["/settings/office<br>自社情報"]
-    end
-
-    Login --> Dashboard
-    Dashboard --> CompanyList
-    Dashboard --> DocumentList
-    Dashboard --> Settings
-
-    CompanyList --> CompanyNew
-    CompanyList --> CompanyEdit
-
-    DocumentList --> DocumentNew
-    DocumentList --> DocumentDetail
-    DocumentDetail --> DocumentEdit
-
-    Settings --> OfficeSettings
-```
-
-## 見積もり作成フロー
-
-```mermaid
-sequenceDiagram
-    actor User as ユーザー
-    participant UI as 画面
-    participant API as API
-    participant DB as データベース
-
-    User->>UI: 見積もり作成画面を開く
-    UI->>API: GET /api/documents/generate-number
-    API->>DB: 最新の見積番号を取得
-    DB-->>API: 見積番号
-    API-->>UI: 新しい見積番号 (例: Q-202602-001)
-
-    User->>UI: 顧客・明細を入力
-    User->>UI: 保存ボタンをクリック
-    UI->>API: POST /api/documents
-    API->>DB: 見積もりを保存
-    API->>DB: 明細を保存
-    DB-->>API: 保存完了
-    API-->>UI: 成功レスポンス
-    UI-->>User: 一覧画面へ遷移
-```
 
 ## セットアップ
 
@@ -475,7 +325,9 @@ sequenceDiagram
 | `/api/documents/generate-number` | GET | `Q-YYYYMM-NNN` 形式の見積番号を自動生成 |
 | `/api/offices/[id]` | GET/PUT | 自社情報取得 / 更新 |
 
-## NPMスクリプト
+## スクリプト
+
+### NPMスクリプト
 
 | コマンド | 説明 |
 |----------|------|
@@ -486,9 +338,17 @@ sequenceDiagram
 | `npm run db:seed` | 初期データ投入 |
 | `npm run db:studio` | Prisma Studio起動 |
 
-## IIS デプロイ
+### シェルスクリプト
 
-### 必要条件
+| スクリプト | 説明 |
+|------------|------|
+| `scripts/setup.sh` | Mac/Linux 初期セットアップ |
+| `scripts/setup.bat` | Windows 初期セットアップ |
+| `scripts/deploy.ps1` | IIS デプロイ |
+
+### IIS デプロイ
+
+#### 必要条件
 
 - Windows Server 2016以降
 - IIS 10.0以降
@@ -496,7 +356,7 @@ sequenceDiagram
 - [iisnode](https://github.com/Azure/iisnode/releases)
 - [URL Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)
 
-### デプロイ手順
+#### デプロイ手順
 
 ```powershell
 # 1. ビルド
@@ -510,7 +370,7 @@ npm run build
 #    - 物理パス: C:\inetpub\wwwroot\quote-system
 ```
 
-### 構成ファイル
+#### 構成ファイル
 
 | ファイル | 説明 |
 |----------|------|
@@ -518,14 +378,152 @@ npm run build
 | `web.config` | IIS + iisnode 設定 |
 | `scripts/deploy.ps1` | デプロイ自動化スクリプト |
 
-## スクリプト
+## 機能一覧
 
-| スクリプト | 説明 |
-|------------|------|
-| `scripts/setup.sh` | Mac/Linux 初期セットアップ |
-| `scripts/setup.bat` | Windows 初期セットアップ |
-| `scripts/deploy.ps1` | IIS デプロイ |
+- **認証機能**: ユーザー名/パスワードによるログイン
+- **ダッシュボード**: 顧客数・見積もり数の統計表示
+- **顧客管理**: 顧客企業のCRUD操作
+- **見積もり管理**: 見積書の作成・編集・一覧表示
+- **自社情報設定**: 会社名・住所・振込先情報の管理
+- **印刷対応**: 見積書の印刷用スタイル
 
-## ライセンス
+## データモデル
 
-MIT
+```mermaid
+erDiagram
+    Office ||--o{ Person : "所属"
+    Office ||--o{ Document : "発行"
+    Person ||--o{ Document : "担当"
+    Company ||--o{ Document : "宛先"
+    Document ||--o{ QuoteItem : "明細"
+
+    Office {
+        string id PK
+        string name "会社名"
+        string zipCode "郵便番号"
+        string address "住所"
+        string phone "電話番号"
+        string fax "FAX"
+        string email "メール"
+        string bankInfo "振込先情報"
+        string invoiceNo "インボイス番号"
+    }
+
+    Person {
+        string id PK
+        string name "氏名"
+        string email "メール"
+        string password "パスワード"
+        string role "権限"
+        string officeId FK
+    }
+
+    Company {
+        string id PK
+        string name "会社名"
+        string zipCode "郵便番号"
+        string address "住所"
+        string phone "電話番号"
+        string email "メール"
+        string contactName "担当者名"
+        string note "備考"
+    }
+
+    Document {
+        string id PK
+        string documentNo "見積番号"
+        string title "件名"
+        datetime issueDate "発行日"
+        datetime validUntil "有効期限"
+        string status "状態"
+        decimal subtotal "小計"
+        int taxRate "税率"
+        decimal taxAmount "消費税"
+        decimal totalAmount "合計金額"
+        string companyId FK
+        string personId FK
+        string officeId FK
+    }
+
+    QuoteItem {
+        string id PK
+        int sortOrder "表示順"
+        string itemName "品名"
+        string description "説明"
+        int quantity "数量"
+        string unit "単位"
+        decimal unitPrice "単価"
+        decimal amount "金額"
+        string documentId FK
+    }
+```
+
+## 画面構成
+
+```mermaid
+flowchart TB
+    subgraph 認証
+        Login["/login<br>ログイン画面"]
+    end
+
+    subgraph ダッシュボード
+        Dashboard["/<br>ダッシュボード"]
+    end
+
+    subgraph 顧客管理
+        CompanyList["/companies<br>顧客一覧"]
+        CompanyNew["/companies/new<br>顧客登録"]
+        CompanyEdit["/companies/edit?id=xxx<br>顧客編集"]
+    end
+
+    subgraph 見積もり管理
+        DocumentList["/documents<br>見積もり一覧"]
+        DocumentNew["/documents/new<br>見積もり作成"]
+        DocumentDetail["/documents/detail?id=xxx<br>見積もり詳細"]
+        DocumentEdit["/documents/edit?id=xxx<br>見積もり編集"]
+    end
+
+    subgraph 設定
+        Settings["/settings<br>設定メニュー"]
+        OfficeSettings["/settings/office<br>自社情報"]
+    end
+
+    Login --> Dashboard
+    Dashboard --> CompanyList
+    Dashboard --> DocumentList
+    Dashboard --> Settings
+
+    CompanyList --> CompanyNew
+    CompanyList --> CompanyEdit
+
+    DocumentList --> DocumentNew
+    DocumentList --> DocumentDetail
+    DocumentDetail --> DocumentEdit
+
+    Settings --> OfficeSettings
+```
+
+## 見積もり作成フロー
+
+```mermaid
+sequenceDiagram
+    actor User as ユーザー
+    participant UI as 画面
+    participant API as API
+    participant DB as データベース
+
+    User->>UI: 見積もり作成画面を開く
+    UI->>API: GET /api/documents/generate-number
+    API->>DB: 最新の見積番号を取得
+    DB-->>API: 見積番号
+    API-->>UI: 新しい見積番号 (例: Q-202602-001)
+
+    User->>UI: 顧客・明細を入力
+    User->>UI: 保存ボタンをクリック
+    UI->>API: POST /api/documents
+    API->>DB: 見積もりを保存
+    API->>DB: 明細を保存
+    DB-->>API: 保存完了
+    API-->>UI: 成功レスポンス
+    UI-->>User: 一覧画面へ遷移
+```
