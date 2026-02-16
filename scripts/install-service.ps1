@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Node.js サーバーを Windows サービスとして登録
 

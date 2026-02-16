@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     NSSM (Non-Sucking Service Manager) をダウンロードしてプロジェクトに配置
 
@@ -12,17 +12,22 @@
 
 $ErrorActionPreference = "Stop"
 
-$NssmVersion = "2.24"
+$NssmBuild = "2.24-101-g897c7ad"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $RuntimeDir = Join-Path $ProjectRoot "runtime"
 $NssmDir = Join-Path $RuntimeDir "nssm"
 
-$DownloadUrl = "https://nssm.cc/release/nssm-$NssmVersion.zip"
-$TempZip = Join-Path $env:TEMP "nssm-$NssmVersion.zip"
+# ダウンロードURL（フォールバック付き）
+$DownloadUrls = @(
+    "https://www.nssm.cc/ci/nssm-$NssmBuild.zip",
+    "https://nssm.cc/ci/nssm-$NssmBuild.zip",
+    "https://nssm.cc/release/nssm-2.24.zip"
+)
+$TempZip = Join-Path $env:TEMP "nssm.zip"
 
 Write-Host "=== NSSM Setup ===" -ForegroundColor Cyan
-Write-Host "Version: $NssmVersion"
+Write-Host "Version: $NssmBuild"
 Write-Host "Target: $NssmDir"
 Write-Host ""
 
@@ -37,15 +42,23 @@ if (Test-Path $NssmDir) {
     Remove-Item -Recurse -Force $NssmDir
 }
 
-# ダウンロード
-Write-Host "Downloading NSSM v$NssmVersion..." -ForegroundColor Yellow
-try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempZip -UseBasicParsing
-} catch {
-    Write-Host "ERROR: Failed to download NSSM" -ForegroundColor Red
-    Write-Host "URL: $DownloadUrl"
-    Write-Host "You can manually download from https://nssm.cc/download"
+# ダウンロード（複数URLでフォールバック）
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$downloaded = $false
+foreach ($url in $DownloadUrls) {
+    Write-Host "Downloading from $url ..." -ForegroundColor Yellow
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $TempZip -UseBasicParsing
+        $downloaded = $true
+        Write-Host "  OK" -ForegroundColor Green
+        break
+    } catch {
+        Write-Host "  Failed: $_" -ForegroundColor Gray
+    }
+}
+if (-not $downloaded) {
+    Write-Host "ERROR: すべてのダウンロードURLに失敗しました" -ForegroundColor Red
+    Write-Host "手動で https://nssm.cc/download からダウンロードし、runtime\nssm\ に配置してください"
     exit 1
 }
 
@@ -53,9 +66,14 @@ try {
 Write-Host "Extracting..."
 Expand-Archive -Path $TempZip -DestinationPath $RuntimeDir -Force
 
-# リネーム
-$ExtractedDir = Join-Path $RuntimeDir "nssm-$NssmVersion"
-Rename-Item -Path $ExtractedDir -NewName "nssm"
+# 解凍後のディレクトリを nssm にリネーム（ディレクトリ名を自動検出）
+$extractedDir = Get-ChildItem -Path $RuntimeDir -Directory | Where-Object { $_.Name -like "nssm-*" } | Select-Object -First 1
+if ($extractedDir) {
+    Rename-Item -Path $extractedDir.FullName -NewName "nssm"
+} else {
+    Write-Host "ERROR: 解凍後のNSSMディレクトリが見つかりません" -ForegroundColor Red
+    exit 1
+}
 
 # 一時ファイル削除
 Remove-Item -Path $TempZip -Force

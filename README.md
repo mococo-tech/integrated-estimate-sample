@@ -92,6 +92,24 @@ flowchart LR
 
 > **Note**: Node.js、NSSM はプロジェクトに同梱されるため、サーバーへのインストールは不要
 
+### IIS モジュールのインストール（初回のみ）
+
+デプロイ前に、以下の IIS モジュールを手動でインストールしてください。
+
+1. **URL Rewrite Module** をダウンロード・インストール
+   - https://www.iis.net/downloads/microsoft/url-rewrite
+
+2. **Application Request Routing (ARR)** をダウンロード・インストール
+   - https://www.iis.net/downloads/microsoft/application-request-routing
+
+3. **ARR のプロキシ機能を有効化**（管理者 PowerShell で実行）
+
+   ```powershell
+   %windir%\system32\inetsrv\appcmd.exe set config -section:system.webServer/proxy /enabled:"True" /commit:apphost
+   ```
+
+> **Note**: 両モジュールともインストーラ形式のため、ダウンロード後に実行するだけで完了します。IIS の再起動は不要です。
+
 ### デプロイ手順（推奨：サービス登録あり）
 
 **`deploy.ps1` の処理内容:**

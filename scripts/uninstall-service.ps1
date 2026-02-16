@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Windows サービスを削除
 

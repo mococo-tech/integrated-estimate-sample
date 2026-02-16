@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     IIS リバースプロキシ用デプロイスクリプト
 
@@ -74,8 +74,8 @@ if ($InstallService) {
 }
 Write-Host ""
 
-$totalSteps = 5
-if ($InstallService) { $totalSteps = 7 }
+$totalSteps = 6
+if ($InstallService) { $totalSteps = 8 }
 
 # ========================================
 # 1. Node.js ポータブル版セットアップ
@@ -95,7 +95,14 @@ if (-not $SkipNodeSetup) {
         Write-Host "  Node.js $version (既存を使用)"
     }
 } else {
+    $NodeDir = Join-Path $ProjectRoot "runtime\node"
     Write-Host "[1/$totalSteps] Node.js セットアップをスキップ" -ForegroundColor Gray
+}
+
+# ポータブル Node.js を PATH に追加（npm コマンドを使えるようにする）
+if (Test-Path "$NodeDir\node.exe") {
+    $env:PATH = "$NodeDir;$env:PATH"
+    Write-Host "  PATH にポータブル Node.js を追加しました: $NodeDir"
 }
 
 # ========================================
@@ -118,9 +125,35 @@ if ($InstallService) {
 }
 
 # ========================================
-# 3. ビルド
+# 3. 依存パッケージインストール
 # ========================================
-$buildStep = if ($InstallService) { 3 } else { 2 }
+$installStep = if ($InstallService) { 3 } else { 2 }
+if (-not $SkipBuild) {
+    Write-Host ""
+    Write-Host "[$installStep/$totalSteps] 依存パッケージをインストール中..." -ForegroundColor Yellow
+
+    Push-Location $ProjectRoot
+    try {
+        npm install --production=false
+        if ($LASTEXITCODE -ne 0) {
+            throw "npm install に失敗しました"
+        }
+        Write-Host "  Prisma クライアントを生成中..."
+        npx prisma generate
+        if ($LASTEXITCODE -ne 0) {
+            throw "prisma generate に失敗しました"
+        }
+    } finally {
+        Pop-Location
+    }
+} else {
+    Write-Host "[$installStep/$totalSteps] 依存パッケージインストールをスキップ" -ForegroundColor Gray
+}
+
+# ========================================
+# 4. ビルド
+# ========================================
+$buildStep = if ($InstallService) { 4 } else { 3 }
 if (-not $SkipBuild) {
     Write-Host ""
     Write-Host "[$buildStep/$totalSteps] プロダクションビルド中..." -ForegroundColor Yellow
@@ -139,9 +172,9 @@ if (-not $SkipBuild) {
 }
 
 # ========================================
-# 4. デプロイ先ディレクトリ準備
+# 5. デプロイ先ディレクトリ準備
 # ========================================
-$prepStep = if ($InstallService) { 4 } else { 3 }
+$prepStep = if ($InstallService) { 5 } else { 4 }
 Write-Host ""
 Write-Host "[$prepStep/$totalSteps] デプロイ先を準備中..." -ForegroundColor Yellow
 
@@ -171,9 +204,9 @@ if (Test-Path $TargetPath) {
 }
 
 # ========================================
-# 5. ファイルをコピー
+# 6. ファイルをコピー
 # ========================================
-$copyStep = if ($InstallService) { 5 } else { 4 }
+$copyStep = if ($InstallService) { 6 } else { 5 }
 Write-Host ""
 Write-Host "[$copyStep/$totalSteps] ファイルをコピー中..." -ForegroundColor Yellow
 
@@ -207,9 +240,9 @@ foreach ($item in $itemsToCopy) {
 }
 
 # ========================================
-# 6. 環境設定
+# 7. 環境設定
 # ========================================
-$envStep = if ($InstallService) { 6 } else { 5 }
+$envStep = if ($InstallService) { 7 } else { 6 }
 Write-Host ""
 Write-Host "[$envStep/$totalSteps] 環境設定中..." -ForegroundColor Yellow
 
@@ -230,11 +263,11 @@ if (-not (Test-Path $logsDir)) {
 }
 
 # ========================================
-# 7. サービス登録（オプション）
+# 8. サービス登録（オプション）
 # ========================================
 if ($InstallService) {
     Write-Host ""
-    Write-Host "[7/$totalSteps] Windows サービスを登録中..." -ForegroundColor Yellow
+    Write-Host "[8/$totalSteps] Windows サービスを登録中..." -ForegroundColor Yellow
 
     Push-Location $TargetPath
     try {
