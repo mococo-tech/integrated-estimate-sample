@@ -56,7 +56,7 @@ npm run dev
 
 http://localhost:3000 にアクセス
 
-## ログイン情報
+### 4. ログイン情報
 
 初期管理者アカウント:
 
@@ -64,6 +64,125 @@ http://localhost:3000 にアクセス
 |------|-----|
 | メールアドレス | admin@example.com |
 | パスワード | admin123 |
+
+## IIS デプロイ
+
+IIS をリバースプロキシとして使用し、Node.js をプロジェクトに同梱する方式です。
+サーバーへの Node.js インストールは不要です。
+
+```mermaid
+flowchart LR
+    Client[クライアント] --> IIS[IIS<br>リバースプロキシ]
+    IIS --> Node[Node.js<br>Windows サービス<br>localhost:3000]
+    Node --> App[Next.js App]
+
+    subgraph Server["Windows Server"]
+        IIS
+        Node
+        App
+    end
+```
+
+### 必要条件
+
+- Windows Server 2016 以降
+- IIS 10.0 以降
+- [URL Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)
+- [Application Request Routing (ARR)](https://www.iis.net/downloads/microsoft/application-request-routing)
+
+> **Note**: Node.js、NSSM はプロジェクトに同梱されるため、サーバーへのインストールは不要
+
+### デプロイ手順（推奨：サービス登録あり）
+
+**`deploy.ps1` の処理内容:**
+1. Node.js ポータブル版をダウンロード（未取得の場合）
+2. NSSM（サービス化ツール）をダウンロード（`-InstallService` 時）
+3. `npm run build` でプロダクションビルド
+4. 必要なファイルをデプロイ先にコピー
+5. `.env` ファイルを生成（JWT_SECRET 自動生成）
+6. Windows サービスとして登録・起動（`-InstallService` 時）
+
+```powershell
+# 1. デプロイ + Windows サービス登録（管理者として実行）
+.\scripts\deploy.ps1 -TargetPath "C:\inetpub\wwwroot\quote-system" -InstallService
+
+# 2. ARR を有効化（初回のみ）
+%windir%\system32\inetsrv\appcmd.exe set config -section:system.webServer/proxy /enabled:"True" /commit:apphost
+```
+
+**3. IIS マネージャーでサイトを作成**
+
+1. **IIS マネージャーを開く**
+   - `Windows + R` → `inetmgr` と入力して Enter
+
+2. **サイトを追加**
+   - 左ペインの「サイト」を右クリック → 「Web サイトの追加」
+
+3. **サイト設定を入力**
+   | 項目 | 設定値 |
+   |------|--------|
+   | サイト名 | `QuoteSystem`（任意） |
+   | 物理パス | `C:\inetpub\wwwroot\quote-system` |
+   | バインドの種類 | `http` |
+   | IP アドレス | `未使用の IP アドレスすべて` |
+   | ポート | `80`（または任意のポート） |
+   | ホスト名 | 空欄または `quote.example.com` など |
+
+4. **OK をクリックしてサイト作成**
+
+5. **動作確認**
+   - ブラウザで `http://localhost/` または設定したホスト名にアクセス
+   - ログイン画面が表示されれば成功
+
+> **Tip**: ポート 80 が既に使用されている場合は、別のポート（例: 8080）を指定してください。
+
+これで Node.js サーバーは Windows サービスとして自動管理されます：
+- サーバー起動時に自動起動
+- クラッシュ時に自動再起動
+- Services.msc または `sc` コマンドで管理可能
+
+### サービス管理コマンド
+
+```powershell
+# サービスの状態確認
+sc query NextJsQuoteSystem
+
+# サービス停止
+sc stop NextJsQuoteSystem
+
+# サービス開始
+sc start NextJsQuoteSystem
+
+# サービス削除（デプロイ先で実行）
+.\scripts\uninstall-service.ps1
+```
+
+### 手動管理（サービス登録なし）
+
+サービス化せずに手動で管理する場合：
+
+```powershell
+# デプロイ（サービス登録なし）
+.\scripts\deploy.ps1 -TargetPath "C:\inetpub\wwwroot\quote-system"
+
+# 手動起動
+.\scripts\server-manager.ps1 start
+
+# 手動停止
+.\scripts\server-manager.ps1 stop
+```
+
+### 構成ファイル
+
+| ファイル | 説明 |
+|----------|------|
+| `runtime/node/` | Node.js ポータブル版（同梱） |
+| `runtime/nssm/` | NSSM サービス化ツール（同梱） |
+| `runtime/logs/` | サーバーログ出力先 |
+| `server.js` | Next.js サーバーエントリーポイント |
+| `web.config` | IIS リバースプロキシ設定 |
+| `scripts/install-service.ps1` | サービス登録スクリプト |
+| `scripts/deploy.ps1` | デプロイ自動化スクリプト |
 
 ## ディレクトリ構成
 
@@ -159,10 +278,20 @@ http://localhost:3000 にアクセス
 ├── scripts/                              # スクリプト
 │   ├── setup.sh                          # 初期セットアップ (Mac/Linux)
 │   ├── setup.bat                         # 初期セットアップ (Windows)
-│   └── deploy.ps1                        # IISデプロイ (PowerShell)
+│   ├── setup-node.ps1                    # Node.js ポータブル版DL
+│   ├── setup-nssm.ps1                    # NSSM DL
+│   ├── install-service.ps1               # サービス登録
+│   ├── uninstall-service.ps1             # サービス削除
+│   ├── server-manager.ps1                # 手動サーバー管理
+│   └── deploy.ps1                        # IISデプロイ
 │
-├── server.js                             # IIS用エントリーポイント
-├── web.config                            # IIS設定
+├── runtime/                              # ランタイム（デプロイ時生成）
+│   ├── node/                             # Node.js ポータブル版
+│   ├── nssm/                             # NSSM（サービス化ツール）
+│   └── logs/                             # サーバーログ
+│
+├── server.js                             # Next.js サーバーエントリーポイント
+├── web.config                            # IIS リバースプロキシ設定
 └── package.json
 ```
 
@@ -345,39 +474,12 @@ sequenceDiagram
 |------------|------|
 | `scripts/setup.sh` | Mac/Linux 初期セットアップ |
 | `scripts/setup.bat` | Windows 初期セットアップ |
-| `scripts/deploy.ps1` | IIS デプロイ |
-
-### IIS デプロイ
-
-#### 必要条件
-
-- Windows Server 2016以降
-- IIS 10.0以降
-- Node.js (LTS)
-- [iisnode](https://github.com/Azure/iisnode/releases)
-- [URL Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)
-
-#### デプロイ手順
-
-```powershell
-# 1. ビルド
-npm run build
-
-# 2. デプロイスクリプト実行
-.\scripts\deploy.ps1 -TargetPath "C:\inetpub\wwwroot\quote-system"
-
-# 3. IIS マネージャーで設定
-#    - アプリケーションプール: マネージコードなし
-#    - 物理パス: C:\inetpub\wwwroot\quote-system
-```
-
-#### 構成ファイル
-
-| ファイル | 説明 |
-|----------|------|
-| `server.js` | Node.js エントリーポイント（IIS用） |
-| `web.config` | IIS + iisnode 設定 |
-| `scripts/deploy.ps1` | デプロイ自動化スクリプト |
+| `scripts/setup-node.ps1` | Node.js ポータブル版ダウンロード |
+| `scripts/setup-nssm.ps1` | NSSM（サービス化ツール）ダウンロード |
+| `scripts/install-service.ps1` | Windows サービスとして登録 |
+| `scripts/uninstall-service.ps1` | Windows サービスを削除 |
+| `scripts/server-manager.ps1` | Node.js サーバー手動管理 |
+| `scripts/deploy.ps1` | IIS デプロイ（Node.js + NSSM 同梱） |
 
 ## 機能一覧
 

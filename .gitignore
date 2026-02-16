@@ -20,6 +20,9 @@
 # production
 /build
 
+# runtime (Node.js portable for IIS deployment)
+/runtime
+
 # misc
 .DS_Store
 *.pem
