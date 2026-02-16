@@ -102,13 +102,7 @@ flowchart LR
 2. **Application Request Routing (ARR)** をダウンロード・インストール
    - https://www.iis.net/downloads/microsoft/application-request-routing
 
-3. **ARR のプロキシ機能を有効化**（管理者 PowerShell で実行）
-
-   ```powershell
-   %windir%\system32\inetsrv\appcmd.exe set config -section:system.webServer/proxy /enabled:"True" /commit:apphost
-   ```
-
-> **Note**: 両モジュールともインストーラ形式のため、ダウンロード後に実行するだけで完了します。IIS の再起動は不要です。
+> **Note**: 両モジュールともインストーラ形式のため、ダウンロード後に実行するだけで完了します。ARR プロキシの有効化は `deploy.ps1` が自動で行います。
 
 ### デプロイ手順（推奨：サービス登録あり）
 
@@ -121,11 +115,8 @@ flowchart LR
 6. Windows サービスとして登録・起動（`-InstallService` 時）
 
 ```powershell
-# 1. デプロイ + Windows サービス登録（管理者として実行）
-.\scripts\deploy.ps1 -TargetPath "C:\inetpub\wwwroot\quote-system" -InstallService
-
-# 2. ARR を有効化（初回のみ）
-%windir%\system32\inetsrv\appcmd.exe set config -section:system.webServer/proxy /enabled:"True" /commit:apphost
+# デプロイ + Windows サービス登録（管理者として実行）
+.\scripts\deploy.ps1
 ```
 
 **3. IIS マネージャーでサイトを作成**
