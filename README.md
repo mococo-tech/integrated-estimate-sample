@@ -26,7 +26,7 @@ Next.jsでAPIサーバー関連処理を同梱して構築された見積書作�
 | フレームワーク | Next.js 16 (App Router) | SSG のみ（ページ） + Route Handlers（API） |
 | UI | MUI v7 (Material UI) | |
 | ORM | Prisma 7 | |
-| データベース | SQLite | ※テスト用。本番は PostgreSQL/MySQL 推奨 |
+| データベース | SQLite | ※テスト用。 |
 | 認証 | JWT (jose) + bcryptjs | HttpOnly Cookie |
 | データ取得 | SWR | クライアントサイドフェッチ |
 
